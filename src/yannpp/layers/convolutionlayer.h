@@ -16,6 +16,8 @@
 #include <yannpp/network/activator.h>
 #include <yannpp/optimizer/optimizer.h>
 #include <iostream>
+#include <chrono>
+using namespace std::chrono;
 
 namespace yannpp {
 #define FILTER_DIM(input, filter, stride) (((input) - (filter))/(stride) + 1)
@@ -310,7 +312,7 @@ namespace yannpp {
             std::vector<T> result;
 //            std::cout << "output_shape.capacity:"<< output_shape.capacity() << std::endl;
             result.reserve(output_shape.capacity());
-
+            auto start = system_clock::now();
             // number of patches is [out_height * out_width]
             const size_t patches_size = patches.size();
             for (size_t i = 0; i < patches_size; i++) {
@@ -321,7 +323,9 @@ namespace yannpp {
                 conv.add(biases);
                 result.insert(result.end(), conv.data().begin(), conv.data().end());
             }
-
+            auto end = system_clock::now();
+            auto cost = std::chrono::duration<double, std::micro>(end - start).count();
+            std::cout << "feedforward  running cost:" << cost << std::endl;
             this->output_ = array3d_t<T>(output_shape, std::move(result));
             return this->activator_.activate(this->output_);
         }
@@ -350,6 +354,7 @@ namespace yannpp {
             // this is a workaround for the fact that array3d cannot be used
             // for dot product of 4d arrays
             // so do dot products of each row separately
+
             for (size_t d = 0; d < deltas_size; d++) {
                 std::vector<T> nabla_w;
                 nabla_w.reserve(this->filter_shape_.capacity());
@@ -359,7 +364,7 @@ namespace yannpp {
                 this->nabla_weights_[d].add(array3d_t<T>(this->filter_shape_, std::move(nabla_w)));
                 this->nabla_biases_[d](0) += deltas[d].sum();
             }
-
+            auto start = system_clock::now();
             // precreate placeholders for sum
             std::vector<array3d_t<T>> delta_input_channel;
             for (size_t z = 0; z < this->input_shape_.z(); z++) {
@@ -378,18 +383,27 @@ namespace yannpp {
                 // each output layer was created using full input (*) filter
                 // so each delta (output error) layer will influence errors of whole input as well
                 for (size_t z = 0; z < this->input_shape_.z(); z++) {
+                    auto start1 = system_clock::now();
                     auto filter_z = this->filter_weights_[d].extract(
                                         index3d_t(0, 0, z),
                                         index3d_t(this->filter_shape_.x() - 1,
                                                   this->filter_shape_.y() - 1,
                                                   z));
+                    auto end1 = system_clock::now();
+                    auto cost1 = std::chrono::duration<double, std::micro>(end1 - start1).count();
+                    std::cout << "extract  running cost:" << cost1 << std::endl;
                     // result of size [input_width * input_height] - errors scaled by weights
                     auto delta_z = dot21(delta_patch,
                                          array3d_t<T>(filter_slice_shape, std::move(filter_z)));
                     delta_input_channel[z].add(delta_z);
+                    auto end2 = system_clock::now();
+                    auto cost2 = std::chrono::duration<double, std::micro>(end2 - end1).count();
+                    std::cout << "dot21  running cost:" << cost2 << std::endl;
                 }
             }
-
+            auto end = system_clock::now();
+            auto cost = std::chrono::duration<double, std::micro>(end - start).count();
+            std::cout << "delta_input_channel hash running cost:" << cost << std::endl;
             array3d_t<T> delta_next(this->input_shape_, T(0));
             // just transpose errors of size [channels, input_height * input_width]
             // to proper 3d array [input_height, input_width, channels]
@@ -400,8 +414,7 @@ namespace yannpp {
                     }
                 }
             }
-
-            return delta_next;
+          return delta_next;
         }
 
     private:
