@@ -16,7 +16,14 @@ namespace yannpp {
         int result = vfprintf(stdout, fmt, args);
         fprintf(stdout, "\n");
     }
-
+    void logD(const char *fmt, ...) {
+#if 1
+        va_list args;
+        va_start(args, fmt);
+        int result = vfprintf(stdout, fmt, args);
+        fprintf(stdout, "\n");
+#endif
+    }
     bool segmentsOverlap(const std::pair<int, int> &a, const std::pair<int, int> &b) {
         if (a.first <= b.first) {
             return (b.first <= a.second) || (b.first == a.second+1);

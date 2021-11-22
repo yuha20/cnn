@@ -6,6 +6,7 @@ namespace yannpp {
     class array3d_t;
 
     void log(const char *fmt, ...);
+    void logD(const char *fmt, ...);
     void log(array3d_t<float> const &arr);
 }
 

@@ -325,7 +325,7 @@ namespace yannpp {
             }
             auto end = system_clock::now();
             auto cost = std::chrono::duration<double, std::micro>(end - start).count();
-            std::cout << "feedforward  running cost:" << cost << std::endl;
+            logD("feedforward  running cost:%.2f", cost );
             this->output_ = array3d_t<T>(output_shape, std::move(result));
             return this->activator_.activate(this->output_);
         }
@@ -375,6 +375,10 @@ namespace yannpp {
             // extract patches for convolution from each layer of deltas (# of layers == # of filters)
             // returns array [filters_count, input_width * input_height, filter_width * filter_height] of deltas
             auto dpatches = delta_patches(delta);
+
+            auto end = system_clock::now();
+            auto cost = std::chrono::duration<double, std::micro>(end - start).count();
+            logD("delta_patches  cost:%.2f", cost );
             shape3d_t filter_slice_shape(this->filter_shape_.x()*this->filter_shape_.y(), 1, 1);
             for (size_t d = 0; d < deltas_size; d++) {
                 // delta patch has size [input_width * input_height, filter_width * filter_height]
@@ -391,19 +395,19 @@ namespace yannpp {
                                                   z));
                     auto end1 = system_clock::now();
                     auto cost1 = std::chrono::duration<double, std::micro>(end1 - start1).count();
-                    std::cout << "extract  running cost:" << cost1 << std::endl;
+                    logD("extract  cost:%.2f", cost1 );
                     // result of size [input_width * input_height] - errors scaled by weights
                     auto delta_z = dot21(delta_patch,
                                          array3d_t<T>(filter_slice_shape, std::move(filter_z)));
                     delta_input_channel[z].add(delta_z);
                     auto end2 = system_clock::now();
                     auto cost2 = std::chrono::duration<double, std::micro>(end2 - end1).count();
-                    std::cout << "dot21  running cost:" << cost2 << std::endl;
+                    logD("dot21  cost:%.2f", cost2 );
                 }
             }
-            auto end = system_clock::now();
-            auto cost = std::chrono::duration<double, std::micro>(end - start).count();
-            std::cout << "delta_input_channel hash running cost:" << cost << std::endl;
+            auto end1 = system_clock::now();
+            cost = std::chrono::duration<double, std::micro>(end1 - end).count();
+            logD("delta_input_channel  cost:%.2f", cost );
             array3d_t<T> delta_next(this->input_shape_, T(0));
             // just transpose errors of size [channels, input_height * input_width]
             // to proper 3d array [input_height, input_width, channels]

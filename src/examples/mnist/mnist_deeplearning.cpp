@@ -32,7 +32,7 @@ int main(int argc, char* argv[]) {
     auto training_data = mnist_dataset.training_data();
     // reduce size for testing
 //    training_data.resize(training_data.size()/10);
-    training_data.resize(training_data.size()/100);
+    training_data.resize(training_data.size()/20);
     activator_t<float> sigmoid_activator(sigmoid_v<float>, sigmoid_derivative_v<float>);
     // derivative returns 1 because it is cancelled out when using cross-entropy
     activator_t<float> softmax_activator(stable_softmax_v<float>,
