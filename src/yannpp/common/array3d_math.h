@@ -6,7 +6,9 @@
 
 #include <yannpp/common/array3d.h>
 #include <yannpp/common/shape.h>
-
+#include <tbb/blocked_range.h>
+#include <tbb/parallel_for.h>
+#include <tbb/parallel_reduce.h>
 namespace yannpp {
     template<typename T>
     T sigmoid(T x) {
@@ -125,6 +127,23 @@ namespace yannpp {
         const size_t height = m.shape().x();
         const size_t width = m.shape().y();
         array3d_t<T> result(shape_row(height), 0);
+
+
+#if 0
+        for (size_t i = 0; i < height; i++) {
+          auto sum = tbb::parallel_reduce(
+          tbb::blocked_range<int>(0, width, 32),
+          0.0,
+          [&](tbb::blocked_range<int> r, T running_total) {
+            for (int j = r.begin(); j < r.end(); ++j) {
+              running_total += v(j) * m(i, j);
+            }
+
+            return running_total;
+          }, std::plus<T>());
+          result(i) = sum;
+        }
+#else
         for (size_t i = 0; i < height; i++) {
             T sum = 0;
             for (size_t j = 0; j < width; j++) {
@@ -132,6 +151,7 @@ namespace yannpp {
             }
             result(i) = sum;
         }
+#endif
         return result;
     }
 
