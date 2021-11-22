@@ -17,7 +17,7 @@ namespace yannpp {
         fprintf(stdout, "\n");
     }
     void logD(const char *fmt, ...) {
-#if 1
+#if 0
         va_list args;
         va_start(args, fmt);
         int result = vfprintf(stdout, fmt, args);

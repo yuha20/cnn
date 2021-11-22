@@ -23,7 +23,8 @@ if(CMAKE_CXX_COMPILER_ID MATCHES GNU)
 endif()
 
 enable_testing()
-
+include_directories(../../411/oneTBB-tbb_2020/include)
+link_libraries(/program/411/oneTBB-tbb_2020/build/windows_intel64_gcc_mingw9.2.0_release/tbb.dll)
 #add_subdirectory(vendors/gtest)
 add_subdirectory(src/yannpp)
 add_subdirectory(src/tests)

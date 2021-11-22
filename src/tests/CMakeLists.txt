@@ -14,7 +14,8 @@ set(SOURCES
     tests_mnist.cpp)
 
 add_executable(yannpp_tests ${SOURCES})
-
+add_executable(parallel_for parallel_for.cpp)
+add_executable(tbb_reduce tbb_reduce.cpp)
 # if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
 #   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -rdynamic")
 # endif()
