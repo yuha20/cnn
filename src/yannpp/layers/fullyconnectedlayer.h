@@ -44,11 +44,13 @@ namespace yannpp {
             nabla_w_ = array3d_t<T>(shape3d_t(layer_out, layer_in, 1), 0);
             nabla_b_ = array3d_t<T>(shape_row(layer_out), 0);
         }
-        virtual array3d_t<T> feedforward(std::vector<std::tuple<array3d_t<float>, array3d_t<float> > >  &train_data,
-        int train_index,std::deque<array3d_t<T>> &patches,array3d_t<T> &output)
+        virtual array3d_t<T> feedforward(array3d_t<T> &input,std::deque<array3d_t<T>> &patches,array3d_t<T> &output) override
         {
-            array3d_t<T> output1;
-            return output1;
+          input_shape_ = input.shape();
+          input.flatten();
+          // z = w*a + b
+          output = dot21(weights_, input); output.add(bias_);
+          return activator_.activate(output);
         }
         virtual array3d_t<T> feedforward(array3d_t<T> &&input) override {
             input_shape_ = input.shape();
@@ -58,7 +60,22 @@ namespace yannpp {
             output_ = dot21(weights_, input_); output_.add(bias_);
             return activator_.activate(output_);
         }
-
+        virtual array3d_t<T> backpropagate(array3d_t<T> &&error,array3d_t<T> &input,std::deque<array3d_t<T>> &patches,array3d_t<T> &output) override
+        {
+            array3d_t<T> delta, delta_next, delta_nabla_w;
+            // delta(l) = (w(l+1) * delta(l+1)) [X] derivative(z(l))
+            // (w(l+1) * delta(l+1)) comes as the gradient (error) from the "previous" layer
+            delta = activator_.derivative(output); delta.element_mul(error);
+            // dC/db = delta(l)
+            nabla_b_.add(delta);
+            // dC/dw = a(l-1) * delta(l)
+            delta_nabla_w = outer_product(delta, input);
+            nabla_w_.add(delta_nabla_w);
+            // w(l) * delta(l)
+            delta_next = transpose_dot21(weights_, delta);
+            delta_next.reshape(input_shape_);
+            return delta_next;
+        }
         virtual array3d_t<T> backpropagate(array3d_t<T> &&error) override {
             array3d_t<T> delta, delta_next, delta_nabla_w;
             // delta(l) = (w(l+1) * delta(l+1)) [X] derivative(z(l))

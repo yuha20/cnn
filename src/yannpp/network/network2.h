@@ -54,7 +54,7 @@ namespace yannpp {
                 const size_t batches_size = indices_batches.size();
 
                 for (size_t b = 0; b < batches_size; b++) {
-                    update_mini_batch(data, indices_batches[b], optimizer);
+                    update_mini_batch_parallel(data, indices_batches[b], optimizer);
                     if (b % (batches_size/4) == 0) { log("Processed batch %d out of %d", b, batches_size); }
                 }
 
@@ -103,6 +103,38 @@ namespace yannpp {
                 layer->optimize(strategy);
             }
         }
+        void update_mini_batch_parallel(training_data const &data,
+                               std::vector<size_t> const &indices,
+                               optimizer_t<network2_t::data_type> const &strategy) {
+//          int grain_size=4;
+//          int number_of_threads=indices.size()/grain_size +1;
+//          int number_of_layers= layers_.size();
+//          std::vector< std::vector<std::deque<array3d_t<T>> > >  patches(number_of_threads);
+//          std::vector < std::vector<array3d_t<T>> >  outputs(number_of_threads);
+//          tbb::parallel_for(tbb::blocked_range<size_t>(0, indices.size(),4), [&](const tbb::blocked_range <size_t> &r) {
+////            int thread_id=r.begin()/grain_size;
+////            std::vector<std::deque<array3d_t<T>> > &patch=patches[thread_id];
+////            patch.resize(number_of_layers);
+////            std::vector<array3d_t<T>> &output =outputs[thread_id];
+////            output.resize(number_of_layers);
+//            for ( int i=r.begin();i!=r.end();i++) {
+//              backpropagate_parallel(INPUT(indices[i]), RESULT(indices[i]));
+//            }
+//
+//            for (auto &layer: layers_) {
+//              layer->optimize(strategy);
+//            }
+//          });
+
+          for (auto i: indices) {
+            backpropagate_parallel(INPUT(i), RESULT(i));
+//            backpropagate(INPUT(i), RESULT(i));
+          }
+
+          for (auto &layer: layers_) {
+            layer->optimize(strategy);
+          }
+        }
 
         // runs a loop of propagation of inputs and backpropagation of errors
         // back to the beginning with weights and biases updates as a result
@@ -110,8 +142,10 @@ namespace yannpp {
             const size_t layers_size = layers_.size();
             array3d_t<network2_t::data_type> input(x);
 
+
             // feedforward input
             for (size_t i = 0; i < layers_size; i++) {
+
                 input = layers_[i]->feedforward(std::move(input));
             }
 
@@ -121,7 +155,25 @@ namespace yannpp {
                 error = layers_[i]->backpropagate(std::move(error));
             }
         }
+        void backpropagate_parallel(t_d const &x,t_d const &result) {
 
+            const size_t layers_size = layers_.size();
+            array3d_t<network2_t::data_type> input(x);
+            std::vector< array3d_t <network2_t::data_type> > inputs(layers_size);
+            std::vector< std::deque<array3d_t<T>> > patches(layers_size);
+            std::vector <array3d_t<T> > outputs(layers_size);
+            // feedforward input
+            for (size_t i = 0; i < layers_size; i++) {
+              inputs.push_back(input);
+              input = layers_[i]->feedforward(input,patches[i],outputs[i]);
+            }
+
+            // backpropagate error
+            array3d_t<network2_t::data_type> error(result);
+            for (size_t i = layers_size; i-- > 0;) {
+              error = layers_[i]->backpropagate(std::move(error),inputs[i],patches[i],outputs[i]);
+            }
+        }
     private:
         std::vector<std::shared_ptr<layer_base_t<data_type>>> layers_;
     };

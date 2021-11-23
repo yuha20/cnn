@@ -17,13 +17,18 @@ namespace yannpp {
 
     public:
         virtual void init() override { }
-        virtual array3d_t<T> feedforward(std::vector<std::tuple<array3d_t<float>, array3d_t<float> > >  &train_data,
-                                         int train_index,std::deque<array3d_t<T>> &patches,array3d_t<T> &output)
+        virtual array3d_t<T> feedforward(array3d_t<T> &input,std::deque<array3d_t<T>> &patches,array3d_t<T> &output) override
         {
+            last_activation_ = std::move(input);
             return last_activation_;
         }
         virtual array3d_t<T> feedforward(array3d_t<T> &&input) override {
             last_activation_ = std::move(input);
+            return last_activation_;
+        }
+        virtual array3d_t<T> backpropagate(array3d_t<T> &&error,array3d_t<T> &input,std::deque<array3d_t<T>> &patches,array3d_t<T> &output) override
+        {
+            last_activation_.subtract(error);
             return last_activation_;
         }
 
