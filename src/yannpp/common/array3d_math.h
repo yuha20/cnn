@@ -9,6 +9,7 @@
 #include <tbb/blocked_range.h>
 #include <tbb/parallel_for.h>
 #include <tbb/parallel_reduce.h>
+#include "log.h"
 namespace yannpp {
     template<typename T>
     T sigmoid(T x) {
@@ -129,10 +130,10 @@ namespace yannpp {
         array3d_t<T> result(shape_row(height), 0);
 
 
-#if 0
+#if PARALLEL_REDUCE
         for (size_t i = 0; i < height; i++) {
           auto sum = tbb::parallel_reduce(
-          tbb::blocked_range<int>(0, width, 32),
+          tbb::blocked_range<int>(0, width),
           0.0,
           [&](tbb::blocked_range<int> r, T running_total) {
             for (int j = r.begin(); j < r.end(); ++j) {

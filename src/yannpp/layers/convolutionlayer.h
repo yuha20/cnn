@@ -315,7 +315,7 @@ namespace yannpp {
             std::vector<T> result;
 //            std::cout << "output_shape.capacity:"<< output_shape.capacity() << std::endl;
             result.reserve(output_shape.capacity());
-            auto start = system_clock::now();
+//            auto start = system_clock::now();
             // number of patches is [out_height * out_width]
             const size_t patches_size = patches.size();
             for (size_t i = 0; i < patches_size; i++) {
@@ -326,9 +326,9 @@ namespace yannpp {
                 conv.add(biases);
                 result.insert(result.end(), conv.data().begin(), conv.data().end());
             }
-            auto end = system_clock::now();
-            auto cost = std::chrono::duration<double, std::micro>(end - start).count();
-            logD("feedforward  running cost:%.2f", cost );
+//            auto end = system_clock::now();
+//            auto cost = std::chrono::duration<double, std::micro>(end - start).count();
+//            logD("feedforward  running cost:%.2f", cost );
             this->output_ = array3d_t<T>(output_shape, std::move(result));
             return this->activator_.activate(this->output_);
         }
@@ -367,7 +367,7 @@ namespace yannpp {
                 this->nabla_weights_[d].add(array3d_t<T>(this->filter_shape_, std::move(nabla_w)));
                 this->nabla_biases_[d](0) += deltas[d].sum();
             }
-            auto start = system_clock::now();
+//            auto start = system_clock::now();
             // precreate placeholders for sum
             std::vector<array3d_t<T>> delta_input_channel;
             for (size_t z = 0; z < this->input_shape_.z(); z++) {
@@ -379,12 +379,13 @@ namespace yannpp {
             // returns array [filters_count, input_width * input_height, filter_width * filter_height] of deltas
             auto dpatches = delta_patches(delta);
 
-            auto end = system_clock::now();
-            auto cost = std::chrono::duration<double, std::micro>(end - start).count();
-            logD("delta_patches  cost:%.2f", cost );
+//            auto end = system_clock::now();
+//            auto cost = std::chrono::duration<double, std::micro>(end - start).count();
+//            logD("delta_patches  cost:%.2f", cost );
+//            start = system_clock::now();
             shape3d_t filter_slice_shape(this->filter_shape_.x()*this->filter_shape_.y(), 1, 1);
-#if 0
-          tbb::parallel_for(tbb::blocked_range<size_t>(0, deltas_size), [&](const tbb::blocked_range <size_t> &r) {
+#if PARALLEL_FOR
+          tbb::parallel_for(tbb::blocked_range<size_t>(0, deltas_size,4), [&](const tbb::blocked_range <size_t> &r) {
 
             for (size_t d = r.begin(); d < r.end(); d++) {
               // delta patch has size [input_width * input_height, filter_width * filter_height]
@@ -394,34 +395,31 @@ namespace yannpp {
               // so each delta (output error) layer will influence errors of whole input as well
 
               for (size_t z = 0; z < this->input_shape_.z(); z++) {
-                auto start1 = system_clock::now();
+
                 auto filter_z = this->filter_weights_[d].extract(
                         index3d_t(0, 0, z),
                         index3d_t(this->filter_shape_.x() - 1,
                                   this->filter_shape_.y() - 1,
                                   z));
-                auto end1 = system_clock::now();
-                auto cost1 = std::chrono::duration<double, std::micro>(end1 - start1).count();
-                logD("extract  cost:%.2f", cost1);
                 // result of size [input_width * input_height] - errors scaled by weights
                 auto delta_z = dot21(delta_patch,
                                      array3d_t<T>(filter_slice_shape, std::move(filter_z)));
                 delta_input_channel[z].add(delta_z);
-                auto end2 = system_clock::now();
-                auto cost2 = std::chrono::duration<double, std::micro>(end2 - end1).count();
-                logD("dot21  cost:%.2f", cost2);
+
               }
             }
           });
 #else
+
           for (size_t d = 0; d < deltas_size; d++) {
+
             // delta patch has size [input_width * input_height, filter_width * filter_height]
             auto &delta_patch = dpatches[d];
 
             // each output layer was created using full input (*) filter
             // so each delta (output error) layer will influence errors of whole input as well
             for (size_t z = 0; z < this->input_shape_.z(); z++) {
-              auto start1 = system_clock::now();
+
               auto filter_z = this->filter_weights_[d].extract(
                       index3d_t(0, 0, z),
                       index3d_t(this->filter_shape_.x() - 1,
@@ -431,16 +429,17 @@ namespace yannpp {
               auto delta_z = dot21(delta_patch,
                                    array3d_t<T>(filter_slice_shape, std::move(filter_z)));
               delta_input_channel[z].add(delta_z);
-              auto end2 = system_clock::now();
-              auto cost2 = std::chrono::duration<double, std::micro>(end2 - start1).count();
-              logD("dot21  cost:%.2f", cost2 );
+
             }
+
           }
+
 #endif
 
-            auto end1 = system_clock::now();
-            cost = std::chrono::duration<double, std::micro>(end1 - end).count();
-            logD("delta_input_channel  cost:%.2f", cost );
+//            end = system_clock::now();
+//
+//            cost = std::chrono::duration<double, std::micro>(end - start).count();
+//            logD("delta_input_channel  cost:%.2f", cost );
             array3d_t<T> delta_next(this->input_shape_, T(0));
             // just transpose errors of size [channels, input_height * input_width]
             // to proper 3d array [input_height, input_width, channels]

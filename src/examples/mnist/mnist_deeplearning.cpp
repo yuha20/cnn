@@ -74,10 +74,13 @@ int main(int argc, char* argv[]) {
 //    size_t epochs = 60;
     size_t epochs = 1;
     network.init_layers();
+    auto start = system_clock::now();
     network.train(training_data,
                   sdg_optimizer,
                   epochs,
                   mini_batch_size);
-
+    auto end = system_clock::now();
+    auto cost = std::chrono::duration<double, std::micro>(end - start).count();
+    logD("training  running cost:%.2f", cost );
     return 0;
 }

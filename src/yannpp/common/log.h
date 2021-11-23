@@ -1,5 +1,8 @@
 #ifndef LOG_H
 #define LOG_H
+#define VERBOSE 1
+#define PARALLEL_FOR 1
+#define PARALLEL_REDUCE 0
 
 namespace yannpp {
     template<typename T>
