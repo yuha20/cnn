@@ -161,6 +161,11 @@ namespace yannpp {
         using convolution_layer_base_t<T>::convolution_layer_base_t;
 
     public:
+        virtual array3d_t<T> feedforward(std::vector<std::tuple<array3d_t<float>, array3d_t<float> > >  &train, int index)
+        {
+            array3d_t<T> output;
+            return output;
+        }
         virtual array3d_t<T> feedforward(array3d_t<T> &&input) override {
             assert(input.shape() == this->input_shape_);
 
@@ -299,6 +304,37 @@ namespace yannpp {
         using convolution_layer_base_t<T>::convolution_layer_base_t;
 
     public:
+        virtual array3d_t<T> feedforward(std::vector<std::tuple<array3d_t<float>, array3d_t<float> > >  &train_data,
+                                         int train_index,std::deque<array3d_t<T>> &patches,array3d_t<T> &output)
+        {
+            auto &input=std::get<0>(train_data[train_index]);
+            assert(input.shape() == this->input_shape_);
+            // Extracts image patches from the input to form a
+            //  [out_height * out_width, filter_height * filter_width * in_channels]
+            patches= input_patches();
+            // flattens filters to 2d matrix of size [filters_number, filter_height * filter_width * in_channels]
+            auto filters = flat_filters();
+            // convert biases to 1 array of size [filters_number]
+            auto biases = flat_biases();
+
+            const shape3d_t output_shape = this->get_output_shape();
+            std::vector<T> result;
+
+            result.reserve(output_shape.capacity());
+
+            // number of patches is [out_height * out_width]
+            const size_t patches_size = patches.size();
+            for (size_t i = 0; i < patches_size; i++) {
+                // result has size of [filters_number]
+                auto conv = dot21(filters, patches[i]);
+                assert(conv.shape() == shape3d_t(output_shape.z(), 1, 1));
+                conv.add(biases);
+                result.insert(result.end(), conv.data().begin(), conv.data().end());
+            }
+            output = array3d_t<T>(output_shape, std::move(result));
+            return this->activator_.activate(output);
+
+        }
         virtual array3d_t<T> feedforward(array3d_t<T> &&input) override {
             assert(input.shape() == this->input_shape_);
             this->input_ = std::move(input);

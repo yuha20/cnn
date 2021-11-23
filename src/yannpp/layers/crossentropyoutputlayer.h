@@ -5,6 +5,7 @@
 #include <yannpp/layers/layer_metadata.h>
 #include <yannpp/network/activator.h>
 #include <yannpp/optimizer/optimizer.h>
+#include <deque>
 
 namespace yannpp {
     template <typename T>
@@ -16,7 +17,11 @@ namespace yannpp {
 
     public:
         virtual void init() override { }
-
+        virtual array3d_t<T> feedforward(std::vector<std::tuple<array3d_t<float>, array3d_t<float> > >  &train_data,
+                                         int train_index,std::deque<array3d_t<T>> &patches,array3d_t<T> &output)
+        {
+            return last_activation_;
+        }
         virtual array3d_t<T> feedforward(array3d_t<T> &&input) override {
             last_activation_ = std::move(input);
             return last_activation_;

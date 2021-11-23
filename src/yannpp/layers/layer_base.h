@@ -5,6 +5,7 @@
 
 #include <yannpp/common/array3d.h>
 #include <yannpp/layers/layer_metadata.h>
+#include <deque>
 
 namespace yannpp {
     template<typename T>
@@ -17,8 +18,11 @@ namespace yannpp {
         virtual ~layer_base_t() {}
         // input is the output of the previous layer
         virtual array3d_t<T> feedforward(array3d_t<T> &&input) = 0;
+        virtual array3d_t<T> feedforward(std::vector<std::tuple<array3d_t<float>, array3d_t<float> > >  &train_data,
+                                         int train_index,std::deque<array3d_t<T>> &patches,array3d_t<T> &output)=0;
         // error is the gradient with regards to input
         virtual array3d_t<T> backpropagate(array3d_t<T> &&error) = 0;
+//        virtual array3d_t<T> backpropagate(array3d_t<T> &&error,array3d_t<T> &output) = 0;
         virtual void load(std::vector<array3d_t<T>> &&weights, std::vector<array3d_t<T>> &&biases) = 0;
         virtual void optimize(optimizer_t<T> const &) = 0;
         virtual void init() = 0;

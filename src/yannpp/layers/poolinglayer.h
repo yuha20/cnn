@@ -55,7 +55,12 @@ namespace yannpp {
 
             return result;
         }
-
+        virtual array3d_t<T> feedforward(std::vector<std::tuple<array3d_t<float>, array3d_t<float> > >  &train_data,
+        int train_index,std::deque<array3d_t<T>> &patches,array3d_t<T> &output)
+        {
+            array3d_t<T> output1(input_shape_, T(0));
+            return output1;
+        }
         virtual array3d_t<T> backpropagate(array3d_t<T> &&error) override {
             auto &error_shape = error.shape();
             array3d_t<T> output(input_shape_, T(0));
