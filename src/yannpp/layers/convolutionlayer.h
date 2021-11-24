@@ -161,11 +161,7 @@ namespace yannpp {
         using convolution_layer_base_t<T>::convolution_layer_base_t;
 
     public:
-        virtual array3d_t<T> feedforward(std::vector<std::tuple<array3d_t<float>, array3d_t<float> > >  &train, int index)
-        {
-            array3d_t<T> output;
-            return output;
-        }
+
         virtual array3d_t<T> feedforward(array3d_t<T> &&input) override {
             assert(input.shape() == this->input_shape_);
 
@@ -211,10 +207,7 @@ namespace yannpp {
             this->output_ = std::move(result);
             return this->activator_.activate(this->output_);
         }
-        virtual array3d_t<T> backpropagate(array3d_t<T> &&error,array3d_t<T> &input,array3d_t<T> &output) override
-        {
-            return error;
-        }
+
         virtual array3d_t<T> backpropagate(array3d_t<T> &&error) override {
             // error shape was already transformed in the prev layer as delta(l+1)(*)rot180(w(l+1))
             assert(error.shape() == this->output_.shape());
@@ -307,7 +300,7 @@ namespace yannpp {
         using convolution_layer_base_t<T>::convolution_layer_base_t;
 
     public:
-        virtual array3d_t<T> feedforward(array3d_t<T> &input,std::deque<array3d_t<T>> &patches,array3d_t<T> &output)
+        virtual array3d_t<T> feedforward(array3d_t<T> &input,std::deque<array3d_t<T>> &patches,array3d_t<T> &output) override
         {
             assert(input.shape() == this->input_shape_);
             // Extracts image patches from the input to form a
@@ -670,7 +663,7 @@ namespace yannpp {
             return patches;
         }
         std::vector<array3d_t<T>> input_patches_transpose(std::deque<array3d_t<T>> &input_patches) {
-          assert(!this->input_patches_.empty());
+          assert(!input_patches.empty());
           std::vector<array3d_t<T>> patches;
 
           // flat size == filter_height * filter_width * in_channels
@@ -684,7 +677,7 @@ namespace yannpp {
           // input patches are of size
           // [out_height * out_width, filter_height * filter_width * in_channels]
           for (size_t i = 0; i < patches_size; i++) {
-            auto &slice = this->input_patches_[i].data();
+            auto &slice = input_patches[i].data();
             assert(slice.size() == filter_flat_size);
             for (size_t j = 0; j < filter_flat_size; j++) {
               patches[j](i) = slice[j];
