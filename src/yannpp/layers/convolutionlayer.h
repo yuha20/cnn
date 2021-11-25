@@ -354,22 +354,15 @@ namespace yannpp {
       static void convolve_2d(float *input_img, float *kernel,float *output_img, const int& ht, const int& wd, const int& f, const int& stride = 1) {
         int n_wd = (wd - f) / stride + 1;
         int n_ht = (ht - f) / stride + 1;
-//        __m256 p_res1 = _mm256_setzero_ps();
-//        __m256 p_res2 = _mm256_setzero_ps();
-//        __m256 p_res3 = _mm256_setzero_ps();
-//        __m256 p_res4 = _mm256_setzero_ps();
-//        __m256 p_res5 = _mm256_setzero_ps();
-//        __m256 p_res6 = _mm256_setzero_ps();
-//        __m256 p_res7 = _mm256_setzero_ps();
-//        __m256 p_res8 = _mm256_setzero_ps();
-        __m256 p_res1 ;
-        __m256 p_res2 ;
-        __m256 p_res3 ;
-        __m256 p_res4 ;
-        __m256 p_res5 ;
-        __m256 p_res6 ;
-        __m256 p_res7 ;
-        __m256 p_res8 ;
+        __m256 p_res1 = _mm256_setzero_ps();
+        __m256 p_res2 = _mm256_setzero_ps();
+        __m256 p_res3 = _mm256_setzero_ps();
+        __m256 p_res4 = _mm256_setzero_ps();
+        __m256 p_res5 = _mm256_setzero_ps();
+        __m256 p_res6 = _mm256_setzero_ps();
+        __m256 p_res7 = _mm256_setzero_ps();
+        __m256 p_res8 = _mm256_setzero_ps();
+
         __m256 brod;
 
         for (int i = 0; i < n_ht; i++) {
