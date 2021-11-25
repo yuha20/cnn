@@ -145,7 +145,7 @@ int main(){
   int runs = 1;
 
 //  tsc_counter t0, t1;
-
+//  sizeMatrix-sizeKernel+1
   int sizeResult = (((sizeMatrix - sizeKernel + 2 * padding) / strides) + 1);
   printf("size Result: %d\n", sizeResult);
 
@@ -171,7 +171,7 @@ int main(){
 
 
     auto start =  std::chrono::system_clock::now();
-
+  for (int i=0;i<100;i++)
     kernel(sizeKernel,sizeMatrix,sizeResult,matrix,result,filter);
     auto end =  std::chrono::system_clock::now();
     auto cost = std::chrono::duration<double, std::micro>(end - start).count();

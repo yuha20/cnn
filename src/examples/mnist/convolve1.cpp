@@ -126,10 +126,13 @@ int main(int argc, char **argv)
 
   int sizeResult = (((sizeMatrix - sizeKernel + 2 * padding) / strides) + 1);
   printf("size Result: %d\n", sizeResult);
+  matrix =(float *)_aligned_malloc(sizeMatrix * sizeMatrix * sizeof(float), 32 );
+  filter =(float *)_aligned_malloc(sizeKernel * sizeKernel * sizeof(float),32);
+  result=(float *)_aligned_malloc( sizeResult * sizeResult * sizeof(float),32);
 
-  matrix =(float *)_aligned_malloc(sizeMatrix * sizeMatrix * sizeof(double), 32 );
-  filter =(float *)_aligned_malloc(sizeKernel * sizeKernel * sizeof(double),32);
-  result=(float *)_aligned_malloc( sizeResult * sizeResult * sizeof(double),32);
+//  matrix =(float *)malloc(sizeMatrix * sizeMatrix * sizeof(float) );
+//  filter =(float *)malloc(sizeKernel * sizeKernel * sizeof(float));
+//  result=(float *)malloc( sizeResult * sizeResult * sizeof(float));
 
   for (int i = 0; i != sizeKernel*sizeKernel; ++i) {
     filter[i] = 2;
@@ -143,6 +146,7 @@ int main(int argc, char **argv)
     result[i] = 0.0;
   }
   auto start =  std::chrono::system_clock::now();
+  for (int i=0;i<100;i++)
   convolve_2d(matrix, filter, result, sizeMatrix, sizeMatrix,sizeKernel, strides) ;
   auto end =  std::chrono::system_clock::now();
   auto cost = std::chrono::duration<double, std::micro>(end - start).count();
@@ -153,6 +157,9 @@ int main(int argc, char **argv)
 //         }
 //         printf("\n");
 //     }
+//free(matrix);
+//free(result);
+//free(filter);
   _aligned_free(matrix);
   _aligned_free(result);
   _aligned_free(filter);
