@@ -44,6 +44,14 @@ namespace yannpp {
             nabla_w_ = array3d_t<T>(shape3d_t(layer_out, layer_in, 1), 0);
             nabla_b_ = array3d_t<T>(shape_row(layer_out), 0);
         }
+        virtual array3d_t<T> feedforward(array3d_t<T> &input,array3d_t<T> &output) override
+        {
+          input_shape_ = input.shape();
+          input.flatten();
+          // z = w*a + b
+          output = dot21(weights_, input); output.add(bias_);
+          return activator_.activate(output);
+        }
         virtual array3d_t<T> feedforward(array3d_t<T> &input,std::deque<array3d_t<T>> &patches,array3d_t<T> &output) override
         {
           input_shape_ = input.shape();
