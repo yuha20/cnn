@@ -106,7 +106,7 @@ namespace yannpp {
         void update_mini_batch_parallel(training_data const &data,
                                std::vector<size_t> const &indices,
                                optimizer_t<network2_t::data_type> const &strategy) {
-#if 0
+#if PARALLEL_FOR
           tbb::parallel_for(tbb::blocked_range<size_t>(0, indices.size(),20), [&](const tbb::blocked_range <size_t> &r) {
 
             for ( int i=r.begin();i!=r.end();i++) {
