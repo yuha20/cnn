@@ -136,8 +136,8 @@ int main(){
   double *filter ;
   double *result ;
 
-  int sizeMatrix = 1024;
-  int sizeKernel = 4;
+  int sizeMatrix = 28;
+  int sizeKernel = 5;
   int padding = 0;
   int strides = 1;
 
@@ -169,16 +169,14 @@ int main(){
 
   }
 
-  for(unsigned int i = 0; i != runs; ++i) {
+
     auto start =  std::chrono::system_clock::now();
 
     kernel(sizeKernel,sizeMatrix,sizeResult,matrix,result,filter);
     auto end =  std::chrono::system_clock::now();
     auto cost = std::chrono::duration<double, std::micro>(end - start).count();
 
-    sum1 += cost;
-  }
-  printf("Average time: %lf cycles\n", ((double) (sum1 / ((double) runs))));
+  printf("Average time: %lf cycles\n", (double) cost);
 
   _aligned_free(matrix);
   _aligned_free(result);

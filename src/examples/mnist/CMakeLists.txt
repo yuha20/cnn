@@ -26,6 +26,7 @@ set(SOURCES
 add_executable(mnist_training ${SOURCES} mnist_deeplearning.cpp)
 add_executable(convolve convolve.cpp)
 add_executable(convolve1 convolve1.cpp)
+add_executable(convolve_base convolve_base.cpp)
 target_include_directories(mnist_training PRIVATE ${YANNPP_SOURCE_DIR})
 target_include_directories(mnist_training PRIVATE .)
 

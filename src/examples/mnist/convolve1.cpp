@@ -146,13 +146,13 @@ int main(int argc, char **argv)
   convolve_2d(matrix, filter, result, sizeMatrix, sizeMatrix,sizeKernel, strides) ;
   auto end =  std::chrono::system_clock::now();
   auto cost = std::chrono::duration<double, std::micro>(end - start).count();
-  printf("Average time: %lf cycles\n", (double) cost );
-     for(int i = 0; i<sizeResult;i++){
-         for(int j= 0; j<sizeResult;j++){
-            printf("%f           ",result[i*sizeResult + j]);
-         }
-         printf("\n");
-     }
+  printf("Average time: %lf \n", (double) cost );
+//     for(int i = 0; i<sizeResult;i++){
+//         for(int j= 0; j<sizeResult;j++){
+//            printf("%f           ",result[i*sizeResult + j]);
+//         }
+//         printf("\n");
+//     }
   _aligned_free(matrix);
   _aligned_free(result);
   _aligned_free(filter);
