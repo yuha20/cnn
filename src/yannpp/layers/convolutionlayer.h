@@ -300,58 +300,32 @@ namespace yannpp {
         using convolution_layer_base_t<T>::convolution_layer_base_t;
 
     public:
-      int KERNEL_SIZE = 100;
-      void avx_convolve(float *in, float *aligned_out, int length, float *kernel) {
-
-
-
-        __m256 kernel_vec[KERNEL_SIZE] __attribute__((aligned(32)));
-        __m256 data_block __attribute__((aligned(32)));
-
-        __m256 prod __attribute__ ((aligned(32)));
-        __m256 acc __attribute__ ((aligned(32)));
-
-
-
-        int i, k;
-
-        // Repeat each kernel value in a 4-wide register
-        for(i = 0; i < KERNEL_SIZE; ++i) {
-          kernel_vec[i] = _mm256_set1_ps(kernel[i]);
+      float dot(std::int32_t n, const float x[], const float y[])
+      {
+        float sum=0;
+        int i=0;
+        __m256 temp256 = _mm256_setzero_ps();
+        for (; i <= n - 8; i += 8) {
+          __m256 vx = _mm256_loadu_ps(&x[i]);
+          __m256 vy = _mm256_loadu_ps(&y[i]);
+          temp256 = _mm256_add_ps(_mm256_mul_ps(vx, vy), temp256);
         }
+        sum += temp256[0];
+        sum += temp256[1];
+        sum += temp256[2];
+        sum += temp256[3];
+        sum += temp256[4];
+        sum += temp256[5];
+        sum += temp256[6];
+        sum += temp256[7];
+        for (int j=0;j<n-i;j++)
+          sum+=x[j]*y[j];
 
-        for(i = 0; i < length - 8; i+=8) {
-
-          // Zero accumulator
-          acc = _mm256_setzero_ps();
-
-          // NOTE(stefanos): With optimizations,
-          // this loop is unrolled by the compiler
-          for(k = -1; k <= 1; ++k) {
-            // Load 8-float data block (unaligned access)
-            data_block = _mm256_loadu_ps(in + i + k);
-            prod = _mm256_mul_ps(kernel_vec[k + 1], data_block);
-
-            // Accumulate the 8 parallel values
-            acc = _mm256_add_ps(acc, prod);
-          }
-
-          // Stores are aligned because aligned_out is
-          // aligned_out is aligned to a 32-byte boundary
-          // and we go +8 every time.
-          _mm256_store_ps(aligned_out + i, acc);
-        }
-
-        // Scalar computation for the rest < 8 pixels.
-        while(i != length) {
-          aligned_out[i] = 0.0;
-          for(k = -1; k <= 1; ++k)
-            aligned_out[i] += in[i + k] * kernel[k+1];
-          ++i;
-        }
+        return sum;
       }
 
-      static void convolve_2d(float *input_img, float *kernel,float *output_img, const int& ht, const int& wd, const int& f, const int& stride = 1) {
+
+      static void convolve_2d(const float *input_img, const float *kernel,float *output_img, const int& ht, const int& wd, const int& f, const int& stride = 1) {
         int n_wd = (wd - f) / stride + 1;
         int n_ht = (ht - f) / stride + 1;
         __m256 p_res1 = _mm256_setzero_ps();
@@ -368,88 +342,86 @@ namespace yannpp {
         for (int i = 0; i < n_ht; i++) {
           int j = 0;
           for (j = 0; j <= n_wd - 64; j += 64) {
-            p_res1 = _mm256_load_ps(&output_img[i * n_wd + j]);
-            p_res2 = _mm256_load_ps(&output_img[i * n_wd + j + 8]);
-            p_res3 = _mm256_load_ps(&output_img[i * n_wd + j + 16]);
-            p_res4 = _mm256_load_ps(&output_img[i * n_wd + j + 24]);
-            p_res5 = _mm256_load_ps(&output_img[i * n_wd + j + 32]);
-            p_res6 = _mm256_load_ps(&output_img[i * n_wd + j + 40]);
-            p_res7 = _mm256_load_ps(&output_img[i * n_wd + j + 48]);
-            p_res8 = _mm256_load_ps(&output_img[i * n_wd + j + 56]);
+            p_res1 = _mm256_loadu_ps(&output_img[i * n_wd + j]);
+            p_res2 = _mm256_loadu_ps(&output_img[i * n_wd + j + 8]);
+            p_res3 = _mm256_loadu_ps(&output_img[i * n_wd + j + 16]);
+            p_res4 = _mm256_loadu_ps(&output_img[i * n_wd + j + 24]);
+            p_res5 = _mm256_loadu_ps(&output_img[i * n_wd + j + 32]);
+            p_res6 = _mm256_loadu_ps(&output_img[i * n_wd + j + 40]);
+            p_res7 = _mm256_loadu_ps(&output_img[i * n_wd + j + 48]);
+            p_res8 = _mm256_loadu_ps(&output_img[i * n_wd + j + 56]);
             for (int fy = 0; fy < f; fy++)
               for (int fx = 0; fx < f; fx++) {
                 brod = _mm256_set1_ps(kernel[fy * f + fx]);
-                p_res1 = _mm256_fmadd_ps(_mm256_load_ps(&input_img[(i * stride + fy) * wd + j * stride + fx]), brod, p_res1);
-                p_res2 = _mm256_fmadd_ps(_mm256_load_ps(&input_img[(i * stride + fy) * wd + j * stride + 8 + fx]), brod, p_res2);
-                p_res3 = _mm256_fmadd_ps(_mm256_load_ps(&input_img[(i * stride + fy) * wd + j * stride + 16 + fx]), brod, p_res3);
-                p_res4 = _mm256_fmadd_ps(_mm256_load_ps(&input_img[(i * stride + fy) * wd + j * stride + 24 + fx]), brod, p_res4);
-                p_res5 = _mm256_fmadd_ps(_mm256_load_ps(&input_img[(i * stride + fy) * wd + j * stride + 32 + fx]), brod, p_res5);
-                p_res6 = _mm256_fmadd_ps(_mm256_load_ps(&input_img[(i * stride + fy) * wd + j * stride + 40 + fx]), brod, p_res6);
-                p_res7 = _mm256_fmadd_ps(_mm256_load_ps(&input_img[(i * stride + fy) * wd + j * stride + 48 + fx]), brod, p_res7);
-                p_res8 = _mm256_fmadd_ps(_mm256_load_ps(&input_img[(i * stride + fy) * wd + j * stride + 56 + fx]), brod, p_res8);
+                p_res1 = _mm256_fmadd_ps(_mm256_loadu_ps(&input_img[(i * stride + fy) * wd + j * stride + fx]), brod, p_res1);
+                p_res2 = _mm256_fmadd_ps(_mm256_loadu_ps(&input_img[(i * stride + fy) * wd + j * stride + 8 + fx]), brod, p_res2);
+                p_res3 = _mm256_fmadd_ps(_mm256_loadu_ps(&input_img[(i * stride + fy) * wd + j * stride + 16 + fx]), brod, p_res3);
+                p_res4 = _mm256_fmadd_ps(_mm256_loadu_ps(&input_img[(i * stride + fy) * wd + j * stride + 24 + fx]), brod, p_res4);
+                p_res5 = _mm256_fmadd_ps(_mm256_loadu_ps(&input_img[(i * stride + fy) * wd + j * stride + 32 + fx]), brod, p_res5);
+                p_res6 = _mm256_fmadd_ps(_mm256_loadu_ps(&input_img[(i * stride + fy) * wd + j * stride + 40 + fx]), brod, p_res6);
+                p_res7 = _mm256_fmadd_ps(_mm256_loadu_ps(&input_img[(i * stride + fy) * wd + j * stride + 48 + fx]), brod, p_res7);
+                p_res8 = _mm256_fmadd_ps(_mm256_loadu_ps(&input_img[(i * stride + fy) * wd + j * stride + 56 + fx]), brod, p_res8);
               }
-            _mm256_store_ps(&output_img[i * n_wd + j], p_res1);
-            _mm256_store_ps(&output_img[i * n_wd + j + 8], p_res2);
-            _mm256_store_ps(&output_img[i * n_wd + j + 16], p_res3);
-            _mm256_store_ps(&output_img[i * n_wd + j + 24], p_res4);
-            _mm256_store_ps(&output_img[i * n_wd + j + 32], p_res5);
-            _mm256_store_ps(&output_img[i * n_wd + j + 40], p_res6);
-            _mm256_store_ps(&output_img[i * n_wd + j + 48], p_res7);
-            _mm256_store_ps(&output_img[i * n_wd + j + 56], p_res8);
+            _mm256_storeu_ps(&output_img[i * n_wd + j], p_res1);
+            _mm256_storeu_ps(&output_img[i * n_wd + j + 8], p_res2);
+            _mm256_storeu_ps(&output_img[i * n_wd + j + 16], p_res3);
+            _mm256_storeu_ps(&output_img[i * n_wd + j + 24], p_res4);
+            _mm256_storeu_ps(&output_img[i * n_wd + j + 32], p_res5);
+            _mm256_storeu_ps(&output_img[i * n_wd + j + 40], p_res6);
+            _mm256_storeu_ps(&output_img[i * n_wd + j + 48], p_res7);
+            _mm256_storeu_ps(&output_img[i * n_wd + j + 56], p_res8);
           }
 
           for (; j <= n_wd - 32; j += 32) {
-            p_res1 = _mm256_load_ps(&output_img[i * n_wd + j]);
-            p_res2 = _mm256_load_ps(&output_img[i * n_wd + j + 8]);
-            p_res3 = _mm256_load_ps(&output_img[i * n_wd + j + 16]);
-            p_res4 = _mm256_load_ps(&output_img[i * n_wd + j + 24]);
+            p_res1 = _mm256_loadu_ps(&output_img[i * n_wd + j]);
+            p_res2 = _mm256_loadu_ps(&output_img[i * n_wd + j + 8]);
+            p_res3 = _mm256_loadu_ps(&output_img[i * n_wd + j + 16]);
+            p_res4 = _mm256_loadu_ps(&output_img[i * n_wd + j + 24]);
             for (int fy = 0; fy < f; fy++)
               for (int fx = 0; fx < f; fx++) {
                 brod = _mm256_set1_ps(kernel[fy * f + fx]);
-                p_res1 = _mm256_fmadd_ps(_mm256_load_ps(&input_img[(i * stride + fy) * wd + j * stride + fx]), brod, p_res1);
-                p_res2 = _mm256_fmadd_ps(_mm256_load_ps(&input_img[(i * stride + fy) * wd + j * stride + 8 + fx]), brod, p_res2);
-                p_res3 = _mm256_fmadd_ps(_mm256_load_ps(&input_img[(i * stride + fy) * wd + j * stride + 16 + fx]), brod, p_res3);
-                p_res4 = _mm256_fmadd_ps(_mm256_load_ps(&input_img[(i * stride + fy) * wd + j * stride + 24 + fx]), brod, p_res4);
+                p_res1 = _mm256_fmadd_ps(_mm256_loadu_ps(&input_img[(i * stride + fy) * wd + j * stride + fx]), brod, p_res1);
+                p_res2 = _mm256_fmadd_ps(_mm256_loadu_ps(&input_img[(i * stride + fy) * wd + j * stride + 8 + fx]), brod, p_res2);
+                p_res3 = _mm256_fmadd_ps(_mm256_loadu_ps(&input_img[(i * stride + fy) * wd + j * stride + 16 + fx]), brod, p_res3);
+                p_res4 = _mm256_fmadd_ps(_mm256_loadu_ps(&input_img[(i * stride + fy) * wd + j * stride + 24 + fx]), brod, p_res4);
               }
-            _mm256_store_ps(&output_img[i * n_wd + j], p_res1);
-            _mm256_store_ps(&output_img[i * n_wd + j + 8], p_res2);
-            _mm256_store_ps(&output_img[i * n_wd + j + 16], p_res3);
-            _mm256_store_ps(&output_img[i * n_wd + j + 24], p_res4);
+            _mm256_storeu_ps(&output_img[i * n_wd + j], p_res1);
+            _mm256_storeu_ps(&output_img[i * n_wd + j + 8], p_res2);
+            _mm256_storeu_ps(&output_img[i * n_wd + j + 16], p_res3);
+            _mm256_storeu_ps(&output_img[i * n_wd + j + 24], p_res4);
           }
 
           for (; j <= n_wd - 16; j += 16) {
-            p_res1 = _mm256_load_ps(&output_img[i * n_wd + j]);
-            p_res2 = _mm256_load_ps(&output_img[i * n_wd + j + 8]);
+            p_res1 = _mm256_loadu_ps(&output_img[i * n_wd + j]);
+            p_res2 = _mm256_loadu_ps(&output_img[i * n_wd + j + 8]);
             for (int fy = 0; fy < f; fy++)
               for (int fx = 0; fx < f; fx++) {
                 brod = _mm256_set1_ps(kernel[fy * f + fx]);
-                p_res1 = _mm256_fmadd_ps(_mm256_load_ps(&input_img[(i * stride + fy) * wd + j * stride + fx]), brod, p_res1);
-                p_res2 = _mm256_fmadd_ps(_mm256_load_ps(&input_img[(i * stride + fy) * wd + j * stride + 8 + fx]), brod, p_res2);
+                p_res1 = _mm256_fmadd_ps(_mm256_loadu_ps(&input_img[(i * stride + fy) * wd + j * stride + fx]), brod, p_res1);
+                p_res2 = _mm256_fmadd_ps(_mm256_loadu_ps(&input_img[(i * stride + fy) * wd + j * stride + 8 + fx]), brod, p_res2);
               }
-            _mm256_store_ps(&output_img[i * n_wd + j], p_res1);
-            _mm256_store_ps(&output_img[i * n_wd + j + 8], p_res2);
+            _mm256_storeu_ps(&output_img[i * n_wd + j], p_res1);
+            _mm256_storeu_ps(&output_img[i * n_wd + j + 8], p_res2);
           }
 
           for (; j <= n_wd - 8; j += 8) {
-            p_res1 = _mm256_load_ps(&output_img[i * n_wd + j]);
+            p_res1 = _mm256_loadu_ps(&output_img[i * n_wd + j]);
             for (int fy = 0; fy < f; fy++)
               for (int fx = 0; fx < f; fx++)
-                p_res1 = _mm256_fmadd_ps(_mm256_load_ps(&input_img[(i * stride + fy) * wd + j * stride + fx]), _mm256_set1_ps(kernel[fy * f + fx]), p_res1);
+                p_res1 = _mm256_fmadd_ps(_mm256_loadu_ps(&input_img[(i * stride + fy) * wd + j * stride + fx]), _mm256_set1_ps(kernel[fy * f + fx]), p_res1);
 
-            _mm256_store_ps(&output_img[i * n_wd + j], p_res1);
+            _mm256_storeu_ps(&output_img[i * n_wd + j], p_res1);
           }
 
           if (j < n_wd) {
             p_res1 = _mm256_setzero_ps();
             for (int rmd = j, pi = 0; rmd < n_wd; rmd++)
-//				p_res1.m256_f32[pi++] = output_img[i * n_wd + rmd];
               p_res1[pi++] = output_img[i * n_wd + rmd];
             for (int fy = 0; fy < f; fy++)
               for (int fx = 0; fx < f; fx++)
-                p_res1 = _mm256_fmadd_ps(_mm256_load_ps(&input_img[(i * stride + fy) * wd + j * stride + fx]), _mm256_set1_ps(kernel[fy * f + fx]), p_res1);
+                p_res1 = _mm256_fmadd_ps(_mm256_loadu_ps(&input_img[(i * stride + fy) * wd + j * stride + fx]), _mm256_set1_ps(kernel[fy * f + fx]), p_res1);
 
             for (int pi = 0; j < n_wd; j++)
-//				output_img[i * n_wd + j] = p_res1.m256_f32[pi++];
               output_img[i * n_wd + j] = p_res1[pi++];
           }
 
@@ -457,123 +429,31 @@ namespace yannpp {
         }
       }
 
-      virtual array3d_t<T> feedforward(array3d_t<T> &input,std::deque<array3d_t<T>> &patches,array3d_t<T> &output) override
+
+      virtual array3d_t<T> feedforward(array3d_t<T> &input,array3d_t<T> &output) override
       {
-        assert(input.shape() == this->input_shape_);
-        // Extracts image patches from the input to form a
-        //  [out_height * out_width, filter_height * filter_width * in_channels]
-        patches= input_patches(input);
-        // flattens filters to 2d matrix of size [filters_number, filter_height * filter_width * in_channels]
-        auto filters = flat_filters();
-        // convert biases to 1 array of size [filters_number]
-        auto biases = flat_biases();
-
-        const shape3d_t output_shape = this->get_output_shape();
-        std::vector<T> result;
-
-        result.reserve(output_shape.capacity());
-
-        // number of patches is [out_height * out_width]
-        const size_t patches_size = patches.size();
-        for (size_t i = 0; i < patches_size; i++) {
-          // result has size of [filters_number]
-          auto conv = dot21(filters, patches[i]);
-          assert(conv.shape() == shape3d_t(output_shape.z(), 1, 1));
-          conv.add(biases);
-          result.insert(result.end(), conv.data().begin(), conv.data().end());
-        }
-        output = array3d_t<T>(output_shape, std::move(result));
-        return this->activator_.activate(output);
-
-      }
-
-        virtual array3d_t<T> feedforward(array3d_t<T> &input,array3d_t<T> &output) override
-        {
-
-            // flattens filters to 2d matrix of size [filters_number, filter_height * filter_width * in_channels]
-            const int fsize = this->filter_weights_.size();
-            const int flength = this->filter_shape_.capacity();
-            auto filters = flat_filters();
-            // convert biases to 1 array of size [filters_number]
-            auto biases = flat_biases();
-
-
-            const shape3d_t output_shape = this->get_output_shape();
-            std::vector<T> result;
-
-
-
-            output = array3d_t<T>(output_shape, std::move(result));
-            return this->activator_.activate(output);
-
-        }
-#if 1
-      virtual array3d_t<T> feedforward(array3d_t<T> &&input) override
-      {
-
         // flattens filters to 2d matrix of size [filters_number, filter_height * filter_width * in_channels]
         const int fsize = this->filter_weights_.size();
         const int flength = this->filter_shape_.capacity();
         auto filters = flat_filters();
         // convert biases to 1 array of size [filters_number]
         auto biases = flat_biases();
-
-//          &out_ptr[out_ofst + z * row_len]
-        /* Initialize the two argument vectors */
-        __m256 evens = _mm256_set_ps(2.0, 4.0, 6.0, 8.0, 10.0, 12.0, 14.0, 16.0);
-        __m256 odds = _mm256_set_ps(1.0, 3.0, 5.0, 7.0, 9.0, 11.0, 13.0, 15.0);
-
-        /* Compute the difference between the two vectors */
-        __m256 result1 = _mm256_sub_ps(evens, odds);
-
-        /* Display the elements of the result vector */
-        float* f = (float*)&result1;
-        printf("%f %f %f %f %f %f %f %f\n",
-               f[0], f[1], f[2], f[3], f[4], f[5], f[6], f[7]);
-//        __m256 result2 = _mm256_add_ps(evens, odds);
-        __m256 result2=_mm256_load_ps(&f[0]);
-        f = (float*)&result2;
-        printf("%f %f %f %f %f %f %f %f\n",
-               f[0], f[1], f[2], f[3], f[4], f[5], f[6], f[7]);
-
-        std::cout << std::endl;
         const shape3d_t output_shape = this->get_output_shape();
         std::vector<T> result;
         result.resize(output_shape.capacity());
         int stride=this->stride_.x();
-        float *out=(float *)_aligned_malloc( output_shape.capacity()*sizeof(float),32);
-        float *input1=(float *)_aligned_malloc(input.shape().y()*input.shape().x()*sizeof(float),32);
-        float *filter1=(float *)_aligned_malloc(filters.size()*sizeof(float),32);
-        result.reserve(output_shape.capacity());
+        float *result_ptr=(float *)result.data();
+        const float *input_prt=input.data().data();
+        const float *filter_ptr=filters.data().data();
 
-
-//        __m256 p_res1 = _mm256_load_ps(&out[0]);
-//        p_res1 = _mm256_load_ps(&input1[0]);
-//        p_res1 = _mm256_load_ps(&input1[1]);
-//        p_res1 = _mm256_load_ps(&filter1[0]);
-//        p_res1 = _mm256_load_ps(&filter1[1]);
-        avx_convolve(input1, out, 100, filter1);
-        convolve_2d(input1, filter1, out, input.shape().y(), input.shape().x(), filters.shape().x(), stride) ;
-//            convolve_2d()
-        for (int i=0;i<output_shape.capacity();i++)
-          result[i]=out[i];
-
-        for (int i=0;i<output_shape.capacity();i++) {
-          result[i] = out[i];
-          std::cout << result[i] << ",";
-        }
-        std::cout << std::endl;
-        array3d_t<T> output;
-        std::cout << output_shape.capacity() << " size " << result.size() << std::endl;
+        const int number_of_filters = this->filter_weights_.size();
+        const int size_of_filter= this->filter_shape_.capacity();
+        for (int i=0;i<number_of_filters;i++)
+          convolve_2d(input_prt, filter_ptr+i*size_of_filter, result_ptr+i*size_of_filter, input.shape().y(), input.shape().x(), this->filter_shape_.x(), stride) ;
         output = array3d_t<T>(output_shape, std::move(result));
-        this->output_ = array3d_t<T>(output_shape, std::move(result));
-        _aligned_free(out);
-        _aligned_free(input1);
-        _aligned_free(filter1);
         return this->activator_.activate(output);
-
       }
-#else
+
         virtual array3d_t<T> feedforward(array3d_t<T> &&input) override {
             assert(input.shape() == this->input_shape_);
             this->input_ = std::move(input);
@@ -601,18 +481,18 @@ namespace yannpp {
                 conv.add(biases);
                 result.insert(result.end(), conv.data().begin(), conv.data().end());
             }
-            for (int i=0;i<output_shape.capacity();i++) {
-              std::cout << result[i] << ",";
-            }
-            std::cout << std::endl;
+//            for (int i=0;i<output_shape.capacity();i++) {
+//              std::cout << result[i] << ",";
+//            }
+//            std::cout << std::endl;
 //            auto end = system_clock::now();
 //            auto cost = std::chrono::duration<double, std::micro>(end - start).count();
 //            logD("feedforward  running cost:%.2f", cost );
             this->output_ = array3d_t<T>(output_shape, std::move(result));
             return this->activator_.activate(this->output_);
         }
-#endif
-        virtual array3d_t<T> backpropagate(array3d_t<T> &&error,array3d_t<T> &input,std::deque<array3d_t<T>> &patches,array3d_t<T> &output) override
+
+        virtual array3d_t<T> backpropagate(array3d_t<T> &&error,array3d_t<T> &input,array3d_t<T> &output) override
         {
           // error shape was already transformed in the prev layer as delta(l+1)(*)rot180(w(l+1))
           assert(error.shape() == output.shape());
@@ -626,10 +506,11 @@ namespace yannpp {
            * so if we convolve them with deltas of size [filters_count, out_width * out_height]
            * result will be of [filter_width * filter_height * filter_channels, filters_count]
            */
-          auto input_patches = input_patches_transpose(patches);
+          auto input_patches = input_patches_transpose(input);
           // reshape [out_height, out_width, filters_count] errors into
           // [filters_count, output_height * output_width] array
           auto deltas = reshape_deltas(delta);
+
 
           const size_t deltas_size = deltas.size();
           assert(deltas_size == this->nabla_weights_.size());
@@ -642,60 +523,13 @@ namespace yannpp {
             std::vector<T> nabla_w;
             nabla_w.reserve(this->filter_shape_.capacity());
             for (size_t p = 0; p < patches_size; p++) {
-              nabla_w.push_back(inner_product(deltas[d], input_patches[p]));
+//              nabla_w.push_back(inner_product(deltas[d], input_patches[p]));
+              nabla_w.push_back(dot(deltas[d].size(),deltas[d].data().data(), input_patches[p].data().data()));
             }
             this->nabla_weights_[d].add(array3d_t<T>(this->filter_shape_, std::move(nabla_w)));
             this->nabla_biases_[d](0) += deltas[d].sum();
           }
-
-          // precreate placeholders for sum
-          std::vector<array3d_t<T>> delta_input_channel;
-          for (size_t z = 0; z < this->input_shape_.z(); z++) {
-            delta_input_channel.emplace_back(
-                    array3d_t<T>(
-                            shape3d_t(this->input_shape_.x() * this->input_shape_.y(), 1, 1), T(0)));
-          }
-          // extract patches for convolution from each layer of deltas (# of layers == # of filters)
-          // returns array [filters_count, input_width * input_height, filter_width * filter_height] of deltas
-          auto dpatches = delta_patches(delta);
-
-
-          shape3d_t filter_slice_shape(this->filter_shape_.x()*this->filter_shape_.y(), 1, 1);
-
-
-          for (size_t d = 0; d < deltas_size; d++) {
-
-            // delta patch has size [input_width * input_height, filter_width * filter_height]
-            auto &delta_patch = dpatches[d];
-
-            // each output layer was created using full input (*) filter
-            // so each delta (output error) layer will influence errors of whole input as well
-            for (size_t z = 0; z < this->input_shape_.z(); z++) {
-
-              auto filter_z = this->filter_weights_[d].extract(
-                      index3d_t(0, 0, z),
-                      index3d_t(this->filter_shape_.x() - 1,
-                                this->filter_shape_.y() - 1,
-                                z));
-              // result of size [input_width * input_height] - errors scaled by weights
-              auto delta_z = dot21(delta_patch,
-                                   array3d_t<T>(filter_slice_shape, std::move(filter_z)));
-              delta_input_channel[z].add(delta_z);
-
-            }
-
-          }
-
           array3d_t<T> delta_next(this->input_shape_, T(0));
-          // just transpose errors of size [channels, input_height * input_width]
-          // to proper 3d array [input_height, input_width, channels]
-          for (size_t x = 0; x < this->input_shape_.x(); x++) {
-            for (size_t y = 0; y < this->input_shape_.y(); y++) {
-              for (size_t z = 0; z < this->input_shape_.z(); z++) {
-                delta_next(x, y, z) = delta_input_channel[z](y*this->input_shape_.x() + x);
-              }
-            }
-          }
           return delta_next;
 
         }
@@ -716,7 +550,9 @@ namespace yannpp {
             // reshape [out_height, out_width, filters_count] errors into
             // [filters_count, output_height * output_width] array
             auto deltas = reshape_deltas(delta);
-
+//            std::cout<< " input patch before" << this->input_patches_.size() << ":"<< this->input_patches_[0].shape().x() << ":"<<this->input_patches_[0].shape().y() << ":"<< this->input_patches_[0].shape().z()  << std::endl;
+//            std::cout<< " input patch after" << input_patches.size() << ":"<< input_patches[0].shape().x() << ":"<<input_patches[0].shape().y() << ":"<<input_patches[0].shape().z()  << std::endl;
+//            std::cout<< delta.shape().x() << ":"<<delta.shape().y() << ":"<<delta.shape().z() <<":"<< deltas.size() << std::endl;
             const size_t deltas_size = deltas.size();
             assert(deltas_size == this->nabla_weights_.size());
             const size_t patches_size = input_patches.size();
@@ -885,6 +721,10 @@ namespace yannpp {
           }
 
           return patches;
+        }
+        std::vector<array3d_t<T>> input_patches_transpose(array3d_t<T> &input) {
+            auto patches=input_patches(input);
+            return input_patches_transpose(patches);
         }
         std::vector<array3d_t<T>> input_patches_transpose() {
             assert(!this->input_patches_.empty());

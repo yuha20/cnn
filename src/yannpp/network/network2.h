@@ -118,8 +118,8 @@ namespace yannpp {
             }
 #else
           for (auto i: indices) {
-//            backpropagate_parallel(INPUT(i), RESULT(i));
-            backpropagate(INPUT(i), RESULT(i));
+            backpropagate_parallel(INPUT(i), RESULT(i));
+//            backpropagate(INPUT(i), RESULT(i));
           }
 
           for (auto &layer: layers_) {
@@ -157,13 +157,13 @@ namespace yannpp {
             // feedforward input
             for (size_t i = 0; i < layers_size; i++) {
               inputs.push_back(input);
-              input = layers_[i]->feedforward(inputs[i],patches[i],outputs[i]);
+              input = layers_[i]->feedforward(inputs[i],outputs[i]);
             }
 
             // backpropagate error
             array3d_t<network2_t::data_type> error(result);
             for (size_t i = layers_size; i-- > 0;) {
-              error = layers_[i]->backpropagate(std::move(error),inputs[i],patches[i],outputs[i]);
+              error = layers_[i]->backpropagate(std::move(error),inputs[i],outputs[i]);
             }
         }
     private:

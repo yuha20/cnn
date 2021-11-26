@@ -88,40 +88,8 @@ namespace yannpp {
 
           return result;
         }
-        virtual array3d_t<T> feedforward(array3d_t<T> &input,std::deque<array3d_t<T>> &patches,array3d_t<T> &output) override
-        {
-          input_shape_ = input.shape();
-          // downsample input using window with step stride
-          shape3d_t output_shape(POOL_DIM(input_shape_.x(), window_size_, stride_.x()),
-                                 POOL_DIM(input_shape_.y(), window_size_, stride_.y()),
-                                 input_shape_.z());
-          array3d_t<T> result(output_shape, T(0));
-          max_index_ = array3d_t<index3d_t>(output_shape, index3d_t(0, 0, 0));
 
-          // z axis corresponds to each filter from convolution layer
-          for (int z = 0; z < output_shape.z(); z++) {
-            // 2D loop over convoluted image from each filter
-            for (int y = 0; y < output_shape.y(); y++) {
-              int ys = y * stride_.y();
-
-              for (int x = 0; x < output_shape.x(); x++) {
-                int xs = x * stride_.x();
-                // pooling layer does max-pooling, selecting a maximum
-                // activation within the bounds of it's "window"
-                auto input_slice = input.slice(
-                        index3d_t(xs, ys, z),
-                        index3d_t(xs + window_size_ - 1,
-                                  ys + window_size_ - 1,
-                                  z));
-                max_index_(x, y, z) = input_slice.argmax();
-                result(x, y, z) = input_slice.at(max_index_(x, y, z));
-              }
-            }
-          }
-
-          return result;
-        }
-        virtual array3d_t<T> backpropagate(array3d_t<T> &&error,array3d_t<T> &input,std::deque<array3d_t<T>> &patches,array3d_t<T> &output1) override
+        virtual array3d_t<T> backpropagate(array3d_t<T> &&error,array3d_t<T> &input,array3d_t<T> &output1) override
         {
             auto &error_shape = error.shape();
             array3d_t<T> output(input_shape_, T(0));

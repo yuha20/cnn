@@ -12,6 +12,7 @@
 #include <limits>
 
 #include <yannpp/common/shape.h>
+#include <iostream>
 
 namespace yannpp {
     template<typename T>

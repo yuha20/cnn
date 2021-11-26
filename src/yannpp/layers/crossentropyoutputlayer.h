@@ -22,16 +22,11 @@ namespace yannpp {
           last_activation_ = std::move(input);
           return last_activation_;
         }
-        virtual array3d_t<T> feedforward(array3d_t<T> &input,std::deque<array3d_t<T>> &patches,array3d_t<T> &output) override
-        {
-            last_activation_ = std::move(input);
-            return last_activation_;
-        }
         virtual array3d_t<T> feedforward(array3d_t<T> &&input) override {
             last_activation_ = std::move(input);
             return last_activation_;
         }
-        virtual array3d_t<T> backpropagate(array3d_t<T> &&error,array3d_t<T> &input,std::deque<array3d_t<T>> &patches,array3d_t<T> &output) override
+        virtual array3d_t<T> backpropagate(array3d_t<T> &&error,array3d_t<T> &input,array3d_t<T> &output) override
         {
             last_activation_.subtract(error);
             return last_activation_;

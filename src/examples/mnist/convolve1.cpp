@@ -94,20 +94,67 @@ static void convolve_2d(float *input_img, float *kernel,float *output_img, const
     if (j < n_wd) {
       p_res1 = _mm256_setzero_ps();
       for (int rmd = j, pi = 0; rmd < n_wd; rmd++)
-//				p_res1.m256_f32[pi++] = output_img[i * n_wd + rmd];
         p_res1[pi++] = output_img[i * n_wd + rmd];
       for (int fy = 0; fy < f; fy++)
         for (int fx = 0; fx < f; fx++)
           p_res1 = _mm256_fmadd_ps(_mm256_loadu_ps(&input_img[(i * stride + fy) * wd + j * stride + fx]), _mm256_set1_ps(kernel[fy * f + fx]), p_res1);
 
       for (int pi = 0; j < n_wd; j++)
-//				output_img[i * n_wd + j] = p_res1.m256_f32[pi++];
         output_img[i * n_wd + j] = p_res1[pi++];
     }
 
 
   }
 }
+#include <immintrin.h>
+#include <vector>
+#include <assert.h>
+
+
+
+float dot(std::int32_t n, float x[], float y[])
+{
+
+  float sum=0;
+  int i=0;
+  __m256 temp256 = _mm256_setzero_ps();
+  for (; i <= n - 8; i += 8) {
+      __m256 vx = _mm256_loadu_ps(&x[i]);
+      __m256 vy = _mm256_loadu_ps(&y[i]);
+    temp256 = _mm256_add_ps(_mm256_mul_ps(vx, vy), temp256);
+  }
+  sum += temp256[0];
+  sum += temp256[1];
+  sum += temp256[2];
+  sum += temp256[3];
+  sum += temp256[4];
+  sum += temp256[5];
+  sum += temp256[6];
+  sum += temp256[7];
+
+
+
+//  float* f = (float*)&temp;
+//  for (int i=0;i<8;i++)
+//    printf("%f,",f[i]);
+
+  for (int j=0;j<n-i;j++)
+    sum+=x[j]*y[j];
+
+  return sum;
+}
+float dot1(std::int32_t n, float x[], float y[])
+{
+  float res=0;
+  for (int j=0;j<n;j++)
+    res+=x[j]*y[j];
+
+  return res;
+}
+
+
+
+
 int main(int argc, char **argv)
 {
   float *matrix ;
@@ -160,7 +207,13 @@ int main(int argc, char **argv)
 //free(matrix);
 //free(result);
 //free(filter);
+
+  float sum=dot(20,filter,matrix);
+  printf("float sum %lf\n",sum);
+  sum=dot1(20,filter,matrix);
+  printf("float sum %lf\n",sum);
   _aligned_free(matrix);
   _aligned_free(result);
   _aligned_free(filter);
+
 }

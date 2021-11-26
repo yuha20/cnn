@@ -52,14 +52,6 @@ namespace yannpp {
           output = dot21(weights_, input); output.add(bias_);
           return activator_.activate(output);
         }
-        virtual array3d_t<T> feedforward(array3d_t<T> &input,std::deque<array3d_t<T>> &patches,array3d_t<T> &output) override
-        {
-          input_shape_ = input.shape();
-          input.flatten();
-          // z = w*a + b
-          output = dot21(weights_, input); output.add(bias_);
-          return activator_.activate(output);
-        }
         virtual array3d_t<T> feedforward(array3d_t<T> &&input) override {
             input_shape_ = input.shape();
             input_ = std::move(input);
@@ -68,7 +60,7 @@ namespace yannpp {
             output_ = dot21(weights_, input_); output_.add(bias_);
             return activator_.activate(output_);
         }
-        virtual array3d_t<T> backpropagate(array3d_t<T> &&error,array3d_t<T> &input,std::deque<array3d_t<T>> &patches,array3d_t<T> &output) override
+        virtual array3d_t<T> backpropagate(array3d_t<T> &&error,array3d_t<T> &input,array3d_t<T> &output) override
         {
             array3d_t<T> delta, delta_next, delta_nabla_w;
             // delta(l) = (w(l+1) * delta(l+1)) [X] derivative(z(l))
