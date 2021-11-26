@@ -430,7 +430,7 @@ namespace yannpp {
       }
 
 
-      virtual array3d_t<T> feedforward(array3d_t<T> &input,array3d_t<T> &output) override
+      virtual array3d_t<T> feedforward_parallel(array3d_t<T> &input,array3d_t<T> &output) override
       {
         // flattens filters to 2d matrix of size [filters_number, filter_height * filter_width * in_channels]
         const int fsize = this->filter_weights_.size();
@@ -443,13 +443,29 @@ namespace yannpp {
         result.resize(output_shape.capacity());
         int stride=this->stride_.x();
         float *result_ptr=(float *)result.data();
+        std::vector<T> out;
+        out.resize(output_shape.capacity());
+        float *out_ptr=(float *)out.data();
         const float *input_prt=input.data().data();
         const float *filter_ptr=filters.data().data();
 
         const int number_of_filters = this->filter_weights_.size();
         const int size_of_filter= this->filter_shape_.capacity();
         for (int i=0;i<number_of_filters;i++)
-          convolve_2d(input_prt, filter_ptr+i*size_of_filter, result_ptr+i*size_of_filter, input.shape().y(), input.shape().x(), this->filter_shape_.x(), stride) ;
+          convolve_2d(input_prt, filter_ptr+i*size_of_filter, out_ptr+i*output_shape.x()*output_shape.y(), input.shape().y(), input.shape().x(), this->filter_shape_.x(), stride) ;
+        int size=output_shape.x()*output_shape.y();
+        const float *biases_ptr=biases.data().data();
+
+        for (int i=0;i<number_of_filters;i++)
+          for (int j=0;j<size;j++)
+            result_ptr[j*number_of_filters+i]=out_ptr[i*size+j]+biases_ptr[i];
+          // the following codes are used to verify the output is the same as the output of original feedforward_parallel
+//        for (int i=0;i<result.size();i++)
+//          std::cout<< result[i] << "," ;
+//        std::cout << std::endl;
+//        for (int i=0;i<biases.size();i++)
+//          std::cout << biases_ptr[i] << " , ";
+//        std::cout << std::endl;
         output = array3d_t<T>(output_shape, std::move(result));
         return this->activator_.activate(output);
       }
@@ -478,7 +494,10 @@ namespace yannpp {
                 conv.add(biases);
                 result.insert(result.end(), conv.data().begin(), conv.data().end());
             }
-
+            //verify the result
+//            for (int i=0;i<result.size();i++)
+//              std::cout<< result[i] << "," ;
+//            std::cout << std::endl;
             this->output_ = array3d_t<T>(output_shape, std::move(result));
             return this->activator_.activate(this->output_);
         }

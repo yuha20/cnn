@@ -69,13 +69,15 @@ namespace yannpp {
             auto end1 = system_clock::now();
             auto result1 = evaluate_parallel(data, eval_indices);
             auto end2 = system_clock::now();
-            auto result3 = evaluate_SIMD(data, eval_indices);
+            auto result2 = evaluate_SIMD(data, eval_indices);
             auto end3 = system_clock::now();
             auto cost = std::chrono::duration<double, std::micro>(end1 - start).count();
             auto cost1 = std::chrono::duration<double, std::micro>(end2 - end1).count();
             auto cost2 = std::chrono::duration<double, std::micro>(end3 - end2).count();
             log("cost: %f / %f / %f", cost, cost1, cost2);
             log("End result: %d / %d", result, eval_indices.size());
+            log("End result: %d / %d", result1, eval_indices.size());
+            log("End result: %d / %d", result2, eval_indices.size());
         }
 
         // feeds input a to the network and returns output
@@ -93,10 +95,10 @@ namespace yannpp {
             std::vector< array3d_t <network2_t::data_type> > inputs;
             std::vector< std::deque<array3d_t<T>> > patches(layers_size);
             std::vector <array3d_t<T> > outputs(layers_size);
-            // feedforward input
+            // feedforward_parallel input
             for (size_t i = 0; i < layers_size; i++) {
                 inputs.push_back(input);
-                input = layers_[i]->feedforward(inputs[i],outputs[i]);
+                input = layers_[i]->feedforward_parallel(inputs[i], outputs[i]);
             }
             return input;
         }
@@ -155,26 +157,15 @@ namespace yannpp {
         void update_mini_batch_parallel(training_data const &data,
                                std::vector<size_t> const &indices,
                                optimizer_t<network2_t::data_type> const &strategy) {
-#if 0
-          tbb::parallel_for(tbb::blocked_range<size_t>(0, indices.size(),20), [&](const tbb::blocked_range <size_t> &r) {
 
-            for ( int i=r.begin();i!=r.end();i++) {
-              backpropagate_parallel(INPUT(indices[i]), RESULT(indices[i]));
-            }
-          });
-            for (auto &layer: layers_) {
-                layer->optimize(strategy);
-            }
-#else
           for (auto i: indices) {
-//`            backpropagate_parallel(INPUT(i), RESULT(i));
+//            backpropagate_parallel(INPUT(i), RESULT(i));
             backpropagate(INPUT(i), RESULT(i));
           }
 
           for (auto &layer: layers_) {
             layer->optimize(strategy);
           }
-#endif
         }
 
         // runs a loop of propagation of inputs and backpropagation of errors
@@ -184,7 +175,7 @@ namespace yannpp {
             array3d_t<network2_t::data_type> input(x);
 
 
-            // feedforward input
+            // feedforward_parallel input
             for (size_t i = 0; i < layers_size; i++) {
 
                 input = layers_[i]->feedforward(std::move(input));
@@ -203,10 +194,10 @@ namespace yannpp {
             std::vector< array3d_t <network2_t::data_type> > inputs;
             std::vector< std::deque<array3d_t<T>> > patches(layers_size);
             std::vector <array3d_t<T> > outputs(layers_size);
-            // feedforward input
+            // feedforward_parallel input
             for (size_t i = 0; i < layers_size; i++) {
               inputs.push_back(input);
-              input = layers_[i]->feedforward(inputs[i],outputs[i]);
+              input = layers_[i]->feedforward_parallel(inputs[i], outputs[i]);
             }
 
             // backpropagate error

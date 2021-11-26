@@ -24,9 +24,9 @@ In order to use MNIST data you will need to unzip archives in the `data/` direct
 # See
 Main learning loop (as defined in `network2_t::backpropagate()`) looks like this:
 
-    // feedforward input
+    // feedforward_parallel input
     for (size_t i = 0; i < layers_size; i++) {
-        input = layers_[i]->feedforward(input);
+        input = layers_[i]->feedforward_parallel(input);
     }
 
     // backpropagate error
@@ -35,7 +35,7 @@ Main learning loop (as defined in `network2_t::backpropagate()`) looks like this
         error = layers_[i]->backpropagate(error);
     }
 
-Because of this simplicity most interesting things are located in `src/layers/` directory that contains implementations of those `feedforward()` and `backpropagate()` methods for each layer. 
+Because of this simplicity most interesting things are located in `src/layers/` directory that contains implementations of those `feedforward_parallel()` and `backpropagate()` methods for each layer. 
 
 This codebase contains it's own greatly simplified `ndarray` as in Numpy and it's called `array3d_t`. Most useful feature of the array is the ability to slice parts of it's data as subarrays.
 

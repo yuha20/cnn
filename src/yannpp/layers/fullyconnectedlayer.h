@@ -45,7 +45,7 @@ namespace yannpp {
             nabla_b_ = array3d_t<T>(shape_row(layer_out), 0);
         }
 
-        virtual array3d_t<T> feedforward(array3d_t<T> &input,array3d_t<T> &output) override
+        virtual array3d_t<T> feedforward_parallel(array3d_t<T> &input,array3d_t<T> &output) override
         {
           input_shape_ = input.shape();
           input.flatten();

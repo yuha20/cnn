@@ -17,7 +17,7 @@ namespace yannpp {
 
     public:
         virtual void init() override { }
-        virtual array3d_t<T> feedforward(array3d_t<T> &input,array3d_t<T> &output) override
+        virtual array3d_t<T> feedforward_parallel(array3d_t<T> &input,array3d_t<T> &output) override
         {
           last_activation_ = std::move(input);
           return last_activation_;

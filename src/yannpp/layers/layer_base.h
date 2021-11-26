@@ -18,7 +18,7 @@ namespace yannpp {
         virtual ~layer_base_t() {}
         // input is the output of the previous layer
         virtual array3d_t<T> feedforward(array3d_t<T> &&input) = 0;
-        virtual array3d_t<T> feedforward(array3d_t<T> &input,array3d_t<T> &output)=0;
+        virtual array3d_t<T> feedforward_parallel(array3d_t<T> &input, array3d_t<T> &output)=0;
         // error is the gradient with regards to input
         virtual array3d_t<T> backpropagate(array3d_t<T> &&error) = 0;
         virtual array3d_t<T> backpropagate(array3d_t<T> &&error,array3d_t<T> &input,array3d_t<T> &output) = 0;

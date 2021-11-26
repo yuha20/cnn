@@ -55,7 +55,7 @@ namespace yannpp {
 
             return result;
         }
-        virtual array3d_t<T> feedforward(array3d_t<T> &input,array3d_t<T> &output) override
+        virtual array3d_t<T> feedforward_parallel(array3d_t<T> &input,array3d_t<T> &output) override
         {
           shape3d_t input_shape = input.shape();
           // downsample input using window with step stride
@@ -97,7 +97,7 @@ namespace yannpp {
 
             // z axis corresponds to each filter from convolution layer
             for (int z = 0; z < error_shape.z(); z++) {
-              // 2D loop same as in feedforward()
+              // 2D loop same as in feedforward_parallel()
               for (int y = 0; y < error_shape.y(); y++) {
                 int ys = y * stride_.y();
 
@@ -124,7 +124,7 @@ namespace yannpp {
 
             // z axis corresponds to each filter from convolution layer
             for (int z = 0; z < error_shape.z(); z++) {
-                // 2D loop same as in feedforward()
+                // 2D loop same as in feedforward_parallel()
                 for (int y = 0; y < error_shape.y(); y++) {
                     int ys = y * stride_.y();
 
