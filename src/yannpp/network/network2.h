@@ -5,7 +5,7 @@
 #include <vector>
 #include <tuple>
 #include <memory>
-
+#include <atomic>
 #include <yannpp/common/cpphelpers.h>
 #include <yannpp/common/log.h>
 #include <yannpp/optimizer/optimizer.h>
@@ -54,15 +54,27 @@ namespace yannpp {
                 const size_t batches_size = indices_batches.size();
 
                 for (size_t b = 0; b < batches_size; b++) {
+                    auto start = system_clock::now();
                     update_mini_batch_parallel(data, indices_batches[b], optimizer);
-                    if (b % (batches_size/4) == 0) { log("Processed batch %d out of %d", b, batches_size); }
+                    auto end = system_clock::now();
+                    auto cost = std::chrono::duration<double, std::micro>(end - start).count();
+                    if (b % (batches_size/4) == 0) { log("Processed batch %d out of %d cost %f" , b, batches_size,cost); }
                 }
 
                 auto result = evaluate(data, eval_indices);
                 log("Epoch %d: %d / %d", e, result, eval_indices.size());
             }
-
+            auto start = system_clock::now();
             auto result = evaluate(data, eval_indices);
+            auto end1 = system_clock::now();
+            auto result1 = evaluate_parallel(data, eval_indices);
+            auto end2 = system_clock::now();
+            auto result3 = evaluate_SIMD(data, eval_indices);
+            auto end3 = system_clock::now();
+            auto cost = std::chrono::duration<double, std::micro>(end1 - start).count();
+            auto cost1 = std::chrono::duration<double, std::micro>(end2 - end1).count();
+            auto cost2 = std::chrono::duration<double, std::micro>(end3 - end2).count();
+            log("cost: %f / %f / %f", cost, cost1, cost2);
             log("End result: %d / %d", result, eval_indices.size());
         }
 
@@ -74,7 +86,20 @@ namespace yannpp {
             }
             return input;
         }
-
+        // feeds input a to the network and returns output
+        t_d feedforward_parallel(t_d const &a) {
+            const size_t layers_size = layers_.size();
+            array3d_t<network2_t::data_type> input(a);
+            std::vector< array3d_t <network2_t::data_type> > inputs;
+            std::vector< std::deque<array3d_t<T>> > patches(layers_size);
+            std::vector <array3d_t<T> > outputs(layers_size);
+            // feedforward input
+            for (size_t i = 0; i < layers_size; i++) {
+                inputs.push_back(input);
+                input = layers_[i]->feedforward(inputs[i],outputs[i]);
+            }
+            return input;
+        }
 #define INPUT(i) std::get<0>(data[i])
 #define RESULT(i) std::get<1>(data[i])
 
@@ -88,7 +113,31 @@ namespace yannpp {
             }
             return count;
         }
+        size_t evaluate_SIMD(training_data const &data, std::vector<size_t> const &indices) {
+            size_t count = 0;
+            for (auto i: indices) {
+                network2_t::t_d result = feedforward_parallel(INPUT(i));
+                assert(result.size() == RESULT(i).size());
+                if (argmax1d(result) == argmax1d(RESULT(i))) { count++; }
+            }
 
+            return count;
+        }
+        size_t evaluate_parallel(training_data const &data, std::vector<size_t> const &indices) {
+            std::atomic<int> count{0};
+//            std::atomic<int>
+            tbb::parallel_for(tbb::blocked_range<size_t>(0, indices.size(),20), [&](const tbb::blocked_range <size_t> &r) {
+                for ( int i=r.begin();i!=r.end();i++) {
+                    network2_t::t_d result=feedforward_parallel(INPUT(indices[i]));
+                    assert(result.size() == RESULT(i).size());
+                    if (argmax1d(result) == argmax1d(RESULT(indices[i]))) {
+                        count++;
+                    }
+                }
+            });
+
+            return count;
+        }
     private:
         // updates network weights and biases using one
         // iteration of gradient descent using mini_batch of inputs and outputs
@@ -106,7 +155,7 @@ namespace yannpp {
         void update_mini_batch_parallel(training_data const &data,
                                std::vector<size_t> const &indices,
                                optimizer_t<network2_t::data_type> const &strategy) {
-#if PARALLEL_FOR
+#if 0
           tbb::parallel_for(tbb::blocked_range<size_t>(0, indices.size(),20), [&](const tbb::blocked_range <size_t> &r) {
 
             for ( int i=r.begin();i!=r.end();i++) {
@@ -118,8 +167,8 @@ namespace yannpp {
             }
 #else
           for (auto i: indices) {
-            backpropagate_parallel(INPUT(i), RESULT(i));
-//            backpropagate(INPUT(i), RESULT(i));
+//`            backpropagate_parallel(INPUT(i), RESULT(i));
+            backpropagate(INPUT(i), RESULT(i));
           }
 
           for (auto &layer: layers_) {

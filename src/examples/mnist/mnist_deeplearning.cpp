@@ -54,9 +54,9 @@ int main(int argc, char* argv[]) {
                         1, // stride length
                         padding_type::valid,
                         relu_activator),
-                        std::make_shared<pooling_layer_t<float>>(
-                        2, // window_size
-                        2), // stride length
+//                        std::make_shared<pooling_layer_t<float>>(
+//                        2, // window_size
+//                        2), // stride length
                         /*std::make_shared<convolution_layer_loop_t<float>>(
                         shape3d_t(12, 12, 20), // input size
                         shape3d_t(5, 5, 20), // filter size
@@ -67,7 +67,7 @@ int main(int argc, char* argv[]) {
                         std::make_shared<pooling_layer_t<float>>(
                         2, // window_size
                         2), // stride length*/
-                        std::make_shared<fully_connected_layer_t<float>>(10*12*12, 30, relu_activator),
+                        std::make_shared<fully_connected_layer_t<float>>(10*24*24, 30, relu_activator),
                         std::make_shared<fully_connected_layer_t<float>>(30, 10, softmax_activator),
                         std::make_shared<crossentropy_output_layer_t<float>>()}));
 

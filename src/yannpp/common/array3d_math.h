@@ -9,6 +9,7 @@
 #include <tbb/blocked_range.h>
 #include <tbb/parallel_for.h>
 #include <tbb/parallel_reduce.h>
+#include <immintrin.h>
 #include "log.h"
 namespace yannpp {
     template<typename T>
@@ -129,22 +130,6 @@ namespace yannpp {
         const size_t width = m.shape().y();
         array3d_t<T> result(shape_row(height), 0);
 
-
-#if PARALLEL_REDUCE
-        for (size_t i = 0; i < height; i++) {
-          auto sum = tbb::parallel_reduce(
-          tbb::blocked_range<int>(0, width),
-          0.0,
-          [&](tbb::blocked_range<int> r, T running_total) {
-            for (int j = r.begin(); j < r.end(); ++j) {
-              running_total += v(j) * m(i, j);
-            }
-
-            return running_total;
-          }, std::plus<T>());
-          result(i) = sum;
-        }
-#else
         for (size_t i = 0; i < height; i++) {
             T sum = 0;
             for (size_t j = 0; j < width; j++) {
@@ -152,7 +137,6 @@ namespace yannpp {
             }
             result(i) = sum;
         }
-#endif
         return result;
     }
 
@@ -181,6 +165,92 @@ namespace yannpp {
     // result is vector (W, 1, 1)
     template<typename T>
     array3d_t<T> transpose_dot21(array3d_t<T> const &m, array3d_t<T> const &v) {
+        assert(m.shape().dim() == 2);
+        assert(v.shape().dim() == 1);
+        assert(m.shape().x() == v.shape().x());
+
+        const size_t width = m.shape().y();
+        const size_t height = m.shape().x();
+        array3d_t<T> output(shape_row(width), 0);
+
+        for (size_t j = 0; j < width; j++) {
+            T sum = 0;
+            for (size_t i = 0; i < height; i++) {
+                sum += m(i, j) * v(i);
+            }
+            output(j) = sum;
+        }
+
+        return output;
+    }
+    float dot(std::int32_t n, const float x[], const float y[])
+    {
+        float sum=0;
+        int i=0;
+        __m256 temp256 = _mm256_setzero_ps();
+        for (; i <= n - 8; i += 8) {
+            __m256 vx = _mm256_loadu_ps(&x[i]);
+            __m256 vy = _mm256_loadu_ps(&y[i]);
+            temp256 = _mm256_add_ps(_mm256_mul_ps(vx, vy), temp256);
+        }
+        sum += temp256[0];
+        sum += temp256[1];
+        sum += temp256[2];
+        sum += temp256[3];
+        sum += temp256[4];
+        sum += temp256[5];
+        sum += temp256[6];
+        sum += temp256[7];
+        for (int j=0;j<n-i;j++)
+            sum+=x[j]*y[j];
+
+        return sum;
+    }
+    template<typename T>
+    array3d_t<T> dot21_SIMD(array3d_t<T> const &m, array3d_t<T> const &v) {
+        //TODO
+        assert(m.shape().dim() == 2);
+        assert(v.shape().dim() == 1);
+        assert(m.shape().y() == v.shape().x());
+
+        const size_t height = m.shape().x();
+        const size_t width = m.shape().y();
+        array3d_t<T> result(shape_row(height), 0);
+
+        for (size_t i = 0; i < height; i++) {
+            T sum = 0;
+            const T *v_prt=v.data().data();
+            const T *m_ptr=m.data().data()+i*m.shape().x();
+            sum = dot(width,v_prt,m_ptr);
+//            for (size_t j = 0; j < width; j++) {
+//                sum += v(j) * m(i, j);
+//            }
+            result(i) = sum;
+        }
+        return result;
+    }
+    template<typename T>
+    array3d_t<T> outer_product_SIMD(array3d_t<T> const &a, array3d_t<T> const &b) {
+        //TODO
+        assert(a.shape().dim() == b.shape().dim());
+        assert(a.shape().dim() == 1);
+
+        const size_t height = a.shape().x();
+        const size_t width = b.shape().x();
+
+        array3d_t<T> c(shape3d_t(height, width, 1), 0);
+
+        for (size_t i = 0; i < height; i++) {
+            for (size_t j = 0; j < width; j++) {
+                c(i, j) = a(i) * b(j);
+            }
+        }
+
+        return c;
+    }
+    template<typename T>
+    array3d_t<T> transpose_dot21_SIMD(array3d_t<T> const &m, array3d_t<T> const &v) {
+        //TODO
         assert(m.shape().dim() == 2);
         assert(v.shape().dim() == 1);
         assert(m.shape().x() == v.shape().x());

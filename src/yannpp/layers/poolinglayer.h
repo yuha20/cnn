@@ -57,11 +57,11 @@ namespace yannpp {
         }
         virtual array3d_t<T> feedforward(array3d_t<T> &input,array3d_t<T> &output) override
         {
-          input_shape_ = input.shape();
+          shape3d_t input_shape = input.shape();
           // downsample input using window with step stride
-          shape3d_t output_shape(POOL_DIM(input_shape_.x(), window_size_, stride_.x()),
-                                 POOL_DIM(input_shape_.y(), window_size_, stride_.y()),
-                                 input_shape_.z());
+          shape3d_t output_shape(POOL_DIM(input_shape.x(), window_size_, stride_.x()),
+                                 POOL_DIM(input_shape.y(), window_size_, stride_.y()),
+                                 input_shape.z());
           array3d_t<T> result(output_shape, T(0));
           max_index_ = array3d_t<index3d_t>(output_shape, index3d_t(0, 0, 0));
 
