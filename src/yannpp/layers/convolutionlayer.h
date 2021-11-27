@@ -451,8 +451,20 @@ namespace yannpp {
 
         const int number_of_filters = this->filter_weights_.size();
         const int size_of_filter= this->filter_shape_.capacity();
+//        auto start = system_clock::now();
         for (int i=0;i<number_of_filters;i++)
           convolve_2d(input_prt, filter_ptr+i*size_of_filter, out_ptr+i*output_shape.x()*output_shape.y(), input.shape().y(), input.shape().x(), this->filter_shape_.x(), stride) ;
+//        auto end1 = system_clock::now();
+//        tbb::parallel_for(tbb::blocked_range<size_t>(0, number_of_filters,10), [&](const tbb::blocked_range <size_t> &r) {
+//          for (int i = r.begin(); i != r.end(); i++) {
+//            convolve_2d(input_prt, filter_ptr+i*size_of_filter, out_ptr+i*output_shape.x()*output_shape.y(), input.shape().y(), input.shape().x(), this->filter_shape_.x(), stride) ;
+//
+//          }
+//          });
+//        auto end2 = system_clock::now();
+//        auto cost = std::chrono::duration<double, std::micro>(end1 - start).count();
+//        auto cost1 = std::chrono::duration<double, std::micro>(end2 - end1).count();
+//        printf("cost: %f / %f \n", cost, cost1);
         int size=output_shape.x()*output_shape.y();
         const float *biases_ptr=biases.data().data();
 

@@ -3,14 +3,16 @@
 
 #include <exception>
 #include <cmath>
-
-#include <yannpp/common/array3d.h>
-#include <yannpp/common/shape.h>
 #include <tbb/blocked_range.h>
 #include <tbb/parallel_for.h>
 #include <tbb/parallel_reduce.h>
+#include <yannpp/common/array3d.h>
+#include <yannpp/common/shape.h>
 #include <immintrin.h>
 #include "log.h"
+#include <chrono>
+
+using namespace std::chrono;
 namespace yannpp {
     template<typename T>
     T sigmoid(T x) {
@@ -216,17 +218,34 @@ namespace yannpp {
         const size_t height = m.shape().x();
         const size_t width = m.shape().y();
         array3d_t<T> result(shape_row(height), 0);
-
+//        auto start = system_clock::now();
         for (size_t i = 0; i < height; i++) {
             T sum = 0;
             const T *v_prt=v.data().data();
-            const T *m_ptr=m.data().data()+i*m.shape().x();
+            const T *m_ptr=m.data().data()+i*width;
+
             sum = dot(width,v_prt,m_ptr);
 //            for (size_t j = 0; j < width; j++) {
 //                sum += v(j) * m(i, j);
 //            }
             result(i) = sum;
         }
+        // the following code is used to parallel the calculation, but it not work for small size of data
+//        auto end1 = system_clock::now();
+//        tbb::parallel_for(tbb::blocked_range<size_t>(0, height,2), [&](const tbb::blocked_range <size_t> &r) {
+//          for (int i = r.begin(); i != r.end(); i++) {
+//            T sum = 0;
+//            const T *v_prt=v.data().data();
+//            const T *m_ptr=m.data().data()+i*width;
+//
+//            sum = dot(width,v_prt,m_ptr);
+//            result(i) = sum;
+//          }
+//        });
+//        auto end2 = system_clock::now();
+//        auto cost = std::chrono::duration<double, std::micro>(end1 - start).count();
+//        auto cost1 = std::chrono::duration<double, std::micro>(end2 - end1).count();
+//        printf("cost: %f / %f ", cost, cost1);
         return result;
     }
     template<typename T>
