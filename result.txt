@@ -1,0 +1,21 @@
+
+make mnist_training
+src/examples/mnist/mnist_training /home/yuha20/cse375/project/data/
+
+Training data loaded: 60000 images
+Training using 3000 inputs
+Processed batch 0 out of 63 cost 4385787.309000
+Processed batch 15 out of 63 cost 4333802.798000
+Processed batch 30 out of 63 cost 4333730.777000
+Processed batch 45 out of 63 cost 4334106.882000
+Processed batch 60 out of 63 cost 4345129.351000
+Epoch 0: 318 / 500
+cost: 12169384.787000 / 482344.566000 / 268416.671000
+End result: 318 / 500
+End result: 212 / 500
+End result: 212 / 500
+training  running cost:296068545.58
+mars:~/cse375/project/build%
+12169384
+482344.566000
+268416.671000
